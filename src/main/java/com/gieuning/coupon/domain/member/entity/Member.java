@@ -28,7 +28,6 @@ public class Member extends BaseEntity {
     @Column(nullable = false, length = 20)
     private MemberRole role;
 
-
     private Member(String email, String encodedPassword, String nickname, MemberRole role) {
         this.email = email;
         this.password = encodedPassword;
