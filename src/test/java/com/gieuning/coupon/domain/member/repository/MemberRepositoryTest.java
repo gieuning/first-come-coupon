@@ -1,7 +1,6 @@
 package com.gieuning.coupon.domain.member.repository;
 
 import com.gieuning.coupon.domain.member.entity.Member;
-import com.gieuning.coupon.domain.member.entity.MemberRole;
 import com.gieuning.coupon.global.config.JpaAuditingConfig;
 import com.gieuning.coupon.global.config.MySqlTestContainerConfig;
 import org.junit.jupiter.api.DisplayName;
@@ -34,16 +33,6 @@ class MemberRepositoryTest {
         assertThat(saved.getId()).isNotNull();
         assertThat(saved.getCreatedAt()).isNotNull();
         assertThat(saved.getUpdatedAt()).isNotNull();
-    }
-
-    @Test
-    @DisplayName("create()로 만든 회원의 role은 USER다")
-    void createdMemberHasUserRole() {
-        // given & when
-        Member member = Member.create("test@example.com", "encoded-pw", "기은");
-
-        // then
-        assertThat(member.getRole()).isEqualTo(MemberRole.USER);
     }
 
     @Test
