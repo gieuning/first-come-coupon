@@ -51,12 +51,6 @@ class MemberServiceTest {
         MemberResponse response = memberService.signup(request);
 
         // then
-        // [학습 메모 — 정리 후 삭제]
-        // response 검증만으로는 "올바른 것이 저장됐는지"를 증명할 수 없다.
-        // response는 우리가 스텁으로 쥐여준 savedMember에서 나오므로,
-        // 서비스가 엉뚱한 값으로 Member를 만들어 save해도 통과해버린다.
-        // save에 전달된 Member는 서비스 내부에서 태어난 지역변수라 테스트가 직접 볼 수 없고,
-        // ArgumentCaptor가 mock의 호출 기록에서 그 인자를 꺼내주는 유일한 통로다.
         ArgumentCaptor<Member> memberCaptor = ArgumentCaptor.forClass(Member.class);
         // capture()는 any()처럼 매처 자리에 들어가되, 통과시키면서 인자를 챙겨둔다
         then(memberRepository).should().save(memberCaptor.capture());
