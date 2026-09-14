@@ -5,6 +5,7 @@ import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import org.springframework.util.Assert;
 
 @Entity
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
@@ -36,6 +37,9 @@ public class Member extends BaseEntity {
     }
 
     public static Member create(String email, String encodedPassword, String nickname) {
+        Assert.hasText(email, "이메일은 비어 있을 수 없습니다.");
+        Assert.hasText(encodedPassword, "인코딩된 비밀번호는 비어 있을 수 없습니다.");
+        Assert.hasText(nickname, "닉네임은 비어 있을 수 없습니다.");
         return new Member(email, encodedPassword, nickname, MemberRole.USER);
     }
 }
