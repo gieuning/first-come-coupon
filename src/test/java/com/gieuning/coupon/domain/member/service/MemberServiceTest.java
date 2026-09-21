@@ -73,11 +73,12 @@ class MemberServiceTest {
 
         given(memberRepository.existsByEmail(request.getEmail())).willReturn(true);
 
-        // when & then
-        assertThatThrownBy(() -> memberService.signup(request))
-                .isInstanceOf(BusinessException.class)
-                .extracting("errorCode")
-                .isEqualTo(MemberErrorCode.DUPLICATE_EMAIL);
+        // when
+        BusinessException thrown = catchThrowableOfType(BusinessException.class,
+                () -> memberService.signup(request));
+
+        // then
+        assertThat(thrown.getErrorCode()).isEqualTo(MemberErrorCode.DUPLICATE_EMAIL);
 
         then(memberRepository).should(never()).save(any(Member.class));
     }
