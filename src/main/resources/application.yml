@@ -17,3 +17,9 @@ spring:
 logging:
   level:
     org.hibernate.SQL: debug
+
+jwt:
+  secret: ${JWT_SECRET}
+  issuer: first-come-coupon
+  access-token-ttl: 30m  # Duration 자동 변환
+  refresh-token-ttl: 14d
