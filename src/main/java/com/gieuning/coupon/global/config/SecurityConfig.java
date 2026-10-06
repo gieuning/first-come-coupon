@@ -1,6 +1,9 @@
 package com.gieuning.coupon.global.config;
 
+import com.gieuning.coupon.global.security.JwtAuthenticationEntryPoint;
+import com.gieuning.coupon.global.security.JwtAuthenticationFilter;
 import com.gieuning.coupon.global.security.JwtProperties;
+import com.gieuning.coupon.global.security.JwtTokenProvider;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -11,13 +14,16 @@ import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
 @Configuration
 @EnableConfigurationProperties(JwtProperties.class)
 public class SecurityConfig {
 
     @Bean
-    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+    public SecurityFilterChain securityFilterChain(HttpSecurity http,
+                                                   JwtTokenProvider jwtTokenProvider,
+                                                   JwtAuthenticationEntryPoint jwtAuthenticationEntryPoint) throws Exception {
         http
                 // 액세스 토큰은 헤더로 직접 전송하므로 CSRF 전제(자동 전송)가 없다.
                 // 자동 전송되는 쿠키는 리프레시 토큰 하나뿐이며, SameSite=Strict(타 사이트발 요청에 미전송)와
@@ -27,6 +33,8 @@ public class SecurityConfig {
                 // 서버가 세션을 만들지도, 참조하지도 않음 — 인증 상태는 매 요청의 토큰으로만 판단
                 .sessionManagement(session -> session
                         .sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .addFilterBefore(new JwtAuthenticationFilter(jwtTokenProvider), UsernamePasswordAuthenticationFilter.class)
+                .exceptionHandling(ex -> ex.authenticationEntryPoint(jwtAuthenticationEntryPoint))
                 // 폼 로그인·HTTP Basic은 세션/브라우저 전제 방식이라 REST API에선 비활성화
                 .formLogin(AbstractHttpConfigurer::disable)
                 .httpBasic(AbstractHttpConfigurer::disable)
