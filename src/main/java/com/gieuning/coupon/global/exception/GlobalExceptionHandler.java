@@ -12,6 +12,9 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.context.request.WebRequest;
 import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExceptionHandler;
 
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.core.AuthenticationException;
+
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -33,6 +36,13 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         log.error("Unhandled exception", e);
         return ResponseEntity.status(errorCode.getStatus())
                              .body(ErrorResponse.of(errorCode));
+    }
+
+    // Security 예외는 잡지 않고 다시 던진다 — ExceptionTranslationFilter가 401/403으로 번역하도록 위임
+    // (여기서 잡으면 catch-all이 500으로 만든다)
+    @ExceptionHandler({AccessDeniedException.class, AuthenticationException.class})
+    public void rethrowSecurityException(Exception e) throws Exception {
+        throw e;
     }
 
     @Override
