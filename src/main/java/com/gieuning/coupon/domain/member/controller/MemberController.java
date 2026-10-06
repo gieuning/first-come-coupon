@@ -4,10 +4,13 @@ import com.gieuning.coupon.domain.member.dto.request.MemberSignupRequest;
 import com.gieuning.coupon.domain.member.dto.response.MemberResponse;
 import com.gieuning.coupon.domain.member.service.MemberService;
 import com.gieuning.coupon.global.response.ApiResponse;
+import com.gieuning.coupon.global.security.JwtPayload;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -25,6 +28,11 @@ public class MemberController {
         return ResponseEntity
                 .status(HttpStatus.CREATED)
                 .body(ApiResponse.success(memberService.signup(request)));
+    }
+
+    @GetMapping("/me")
+    public ResponseEntity<ApiResponse<MemberResponse>> me(@AuthenticationPrincipal JwtPayload payload) {
+        return ResponseEntity.ok(ApiResponse.success(memberService.getMember(payload.memberId())));
     }
 
 
