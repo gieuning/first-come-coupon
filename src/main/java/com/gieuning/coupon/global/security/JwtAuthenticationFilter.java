@@ -61,9 +61,15 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private String resolveToken(HttpServletRequest request) {
         String header = request.getHeader(HttpHeaders.AUTHORIZATION);
-        if (header == null || !header.startsWith(BEARER_PREFIX)) {
+        // RFC 9110상 auth-scheme은 대소문자를 구분하지 않는다 — 토큰은 구분하므로 스킴 구간만 비교
+        if (header == null || !header.regionMatches(true, 0, BEARER_PREFIX, 0, BEARER_PREFIX.length())) {
             return null;
         }
-        return header.substring(BEARER_PREFIX.length());
+
+        int tokenStart = BEARER_PREFIX.length();
+        while (tokenStart < header.length() && header.charAt(tokenStart) == ' ') {
+            tokenStart++;
+        }
+        return header.substring(tokenStart);
     }
 }

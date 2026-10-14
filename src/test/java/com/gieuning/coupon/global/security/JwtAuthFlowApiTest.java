@@ -77,6 +77,7 @@ class JwtAuthFlowApiTest {
 
         // then
         response.expectStatus().isEqualTo(HttpStatus.UNAUTHORIZED)
+                .expectHeader().valueEquals(HttpHeaders.WWW_AUTHENTICATE, "Bearer realm=\"coupon-api\"")
                 .expectBody()
                 .jsonPath("$.code").isEqualTo(AuthErrorCode.UNAUTHENTICATED.getCode())
                 .jsonPath("$.message").isEqualTo(AuthErrorCode.UNAUTHENTICATED.getMessage());
@@ -101,6 +102,8 @@ class JwtAuthFlowApiTest {
 
         // then
         response.expectStatus().isEqualTo(HttpStatus.UNAUTHORIZED)
+                .expectHeader().valueEquals(HttpHeaders.WWW_AUTHENTICATE,
+                        "Bearer realm=\"coupon-api\", error=\"invalid_token\"")
                 .expectBody()
                 .jsonPath("$.code").isEqualTo(AuthErrorCode.TOKEN_EXPIRED.getCode())
                 .jsonPath("$.message").isEqualTo(AuthErrorCode.TOKEN_EXPIRED.getMessage());
@@ -124,9 +127,54 @@ class JwtAuthFlowApiTest {
                                                              .exchange();
         // then
         response.expectStatus().isEqualTo(HttpStatus.UNAUTHORIZED)
+                .expectHeader().valueEquals(HttpHeaders.WWW_AUTHENTICATE,
+                        "Bearer realm=\"coupon-api\", error=\"invalid_token\"")
                 .expectBody()
                 .jsonPath("$.code").isEqualTo(AuthErrorCode.INVALID_TOKEN.getCode())
                 .jsonPath("$.message").isEqualTo(AuthErrorCode.INVALID_TOKEN.getMessage());
+    }
+
+    @Test
+    @DisplayName("소문자 bearer 스킴과 유효한 토큰으로 /me를 호출하면 200과 내 정보가 온다")
+    void me_withLowercaseBearerScheme_returns200() {
+        // given
+        signup(EMAIL, PASSWORD);
+        String accessToken = login(EMAIL, PASSWORD)
+                .expectBody(LoginBody.class)
+                .returnResult()
+                .getResponseBody()
+                .data().accessToken();
+
+        // when
+        RestTestClient.ResponseSpec response = restTestClient.get().uri("/api/members/me")
+                                                             .header(HttpHeaders.AUTHORIZATION, "bearer " + accessToken)
+                                                             .exchange();
+        // then
+        response.expectStatus().isOk()
+                .expectBody()
+                .jsonPath("$.data.email").isEqualTo(EMAIL);
+    }
+
+    @Test
+    @DisplayName("Bearer 뒤에 공백 두 칸과 유효한 토큰으로 /me를 호출하면 200과 내 정보가 온다")
+    void me_withMultipleSpacesAfterBearer_returns200() {
+        // given
+        signup(EMAIL, PASSWORD);
+        String accessToken = login(EMAIL, PASSWORD)
+                .expectBody(LoginBody.class)
+                .returnResult()
+                .getResponseBody()
+                .data().accessToken();
+
+        // when
+        RestTestClient.ResponseSpec response = restTestClient.get().uri("/api/members/me")
+                                                             .header(HttpHeaders.AUTHORIZATION, "Bearer  " + accessToken)
+                                                             .exchange();
+
+        // then
+        response.expectStatus().isOk()
+                .expectBody()
+                .jsonPath("$.data.email").isEqualTo(EMAIL);
     }
 
     private void signup(String email, String password) {
