@@ -41,4 +41,11 @@ public class MemberService {
         return MemberResponse.from(savedMember);
     }
 
+    public MemberResponse getMember(Long memberId) {
+        Member member = memberRepository.findById(memberId)
+                                        .orElseThrow(() -> new BusinessException(MemberErrorCode.MEMBER_NOT_FOUND));
+
+        return MemberResponse.from(member);
+    }
+
 }
