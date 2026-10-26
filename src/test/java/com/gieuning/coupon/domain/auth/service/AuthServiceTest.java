@@ -22,6 +22,7 @@ import java.util.Optional;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.catchThrowableOfType;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
 
@@ -55,7 +56,7 @@ class AuthServiceTest {
         given(memberRepository.findByEmail(request.getEmail())).willReturn(Optional.of(member));
         given(passwordEncoder.matches(request.getPassword(), member.getPassword())).willReturn(true);
         given(jwtTokenProvider.createAccessToken(1L, MemberRole.USER)).willReturn("access-token");
-        given(jwtTokenProvider.createRefreshToken(1L)).willReturn("refresh-token");
+        given(jwtTokenProvider.createRefreshToken(eq(1L), anyString())).willReturn("refresh-token");
 
         // when
         TokenPair result = authService.login(request);

@@ -10,6 +10,8 @@ import com.gieuning.coupon.global.security.JwtTokenProvider;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
+import java.util.UUID;
+
 @Service
 public class AuthService {
 
@@ -42,7 +44,8 @@ public class AuthService {
         }
 
         String accessToken = jwtTokenProvider.createAccessToken(member.getId(), member.getRole());
-        String refreshToken = jwtTokenProvider.createRefreshToken(member.getId());
+        String familyId = UUID.randomUUID().toString();
+        String refreshToken = jwtTokenProvider.createRefreshToken(member.getId(), familyId);
 
         return new TokenPair(accessToken, refreshToken);
     }
