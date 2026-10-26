@@ -1,14 +1,9 @@
 package com.gieuning.coupon;
 
-import com.gieuning.coupon.global.config.MySqlTestContainerConfig;
+import com.gieuning.coupon.global.config.IntegrationTest;
 import org.junit.jupiter.api.Test;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.context.annotation.Import;
-import org.springframework.test.context.ActiveProfiles;
 
-@SpringBootTest
-@ActiveProfiles("test")
-@Import(MySqlTestContainerConfig.class)
+@IntegrationTest
 class FirstComeCouponApplicationTests {
 
 	@Test

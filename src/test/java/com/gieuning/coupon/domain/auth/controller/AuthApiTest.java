@@ -4,23 +4,16 @@ import com.gieuning.coupon.domain.auth.dto.request.LoginRequest;
 import com.gieuning.coupon.domain.auth.exception.AuthErrorCode;
 import com.gieuning.coupon.domain.member.dto.request.MemberSignupRequest;
 import com.gieuning.coupon.domain.member.repository.MemberRepository;
-import com.gieuning.coupon.global.config.MySqlTestContainerConfig;
+import com.gieuning.coupon.global.config.IntegrationTest;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.resttestclient.autoconfigure.AutoConfigureRestTestClient;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.context.annotation.Import;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
-import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.client.RestTestClient;
 
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
-@AutoConfigureRestTestClient
-@ActiveProfiles("test")
-@Import(MySqlTestContainerConfig.class)
+@IntegrationTest
 class AuthApiTest {
 
     private static final String EMAIL = "test1234@naver.com";
