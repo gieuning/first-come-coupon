@@ -10,6 +10,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import java.time.Duration;
 import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.Base64;
 import java.util.Date;
 import static org.assertj.core.api.Assertions.*;
@@ -20,6 +21,7 @@ class JwtTokenProviderTest {
     private static final String SERVER_SECRET = "OodI43z5y+PhFkWDKrBOKYnxqa5gu/Rz3Umf/7cqHx1JN2B4DOpbrxuqEcR//hjS";
     private static final String ATTACKER_SECRET = "5soFj9sMAEpn3vjVHskePxPeHw/mzaM93Im9pVJ4F3rmHbHdlqZrwoOaLW8bJCAg";
     private static final String ISSUER = "test-issuer";
+    private static final String FAMILY_ID = "family-1";
 
     private JwtTokenProvider tokenProvider;
 
@@ -53,7 +55,7 @@ class JwtTokenProviderTest {
     @DisplayName("리프레시 토큰을 액세스 토큰으로 파싱하면 INVALID_TOKEN으로 거부한다")
     void refreshToken_cannotBeUsedAsAccessToken() {
         // given
-        String refreshToken = tokenProvider.createRefreshToken(1L);
+        String refreshToken = tokenProvider.createRefreshToken(1L, FAMILY_ID, refreshExpiry());
 
         // when
         BusinessException thrown = catchThrowableOfType(BusinessException.class,
@@ -113,5 +115,89 @@ class JwtTokenProviderTest {
 
         // then
         assertThat(thrown.getErrorCode()).isEqualTo(AuthErrorCode.TOKEN_EXPIRED);
+    }
+
+    @Test
+    @DisplayName("발급한 리프레시 토큰을 파싱하면 memberId·familyId가 그대로 나온다")
+    void refreshToken_roundTrip() {
+        // given
+        Long memberId = 1L;
+
+        // when
+        String token = tokenProvider.createRefreshToken(memberId, FAMILY_ID, refreshExpiry());
+        RefreshTokenPayload payload = tokenProvider.parseRefreshToken(token);
+
+        // then
+        assertThat(payload.memberId()).isEqualTo(memberId);
+        assertThat(payload.familyId()).isEqualTo(FAMILY_ID);
+    }
+
+    @Test
+    @DisplayName("같은 회원·패밀리로 연달아 발급해도 리프레시 토큰 문자열은 매번 다르다")
+    void refreshToken_isUniqueEvenWithinSameSecond() {
+        // given — iat는 초 단위이고 재발급은 만료 시각을 이어받으므로, jti 없이는 같은 문자열이 나온다
+        Long memberId = 1L;
+        Instant expiresAt = refreshExpiry();
+
+        // when
+        String first = tokenProvider.createRefreshToken(memberId, FAMILY_ID, expiresAt);
+        String second = tokenProvider.createRefreshToken(memberId, FAMILY_ID, expiresAt);
+
+        // then
+        assertThat(first).isNotEqualTo(second);
+    }
+
+    @Test
+    @DisplayName("만료 시각을 지정해 발급하면 그 시각이 그대로 유지된다 (재발급 시 절대 만료)")
+    void refreshToken_keepsGivenExpiration() {
+        // given — JWT의 exp는 초 단위라 비교 기준도 초로 자른다
+        Instant expiresAt = Instant.now().plus(Duration.ofDays(3)).truncatedTo(ChronoUnit.SECONDS);
+
+        // when
+        String token = tokenProvider.createRefreshToken(1L, FAMILY_ID, expiresAt);
+        RefreshTokenPayload payload = tokenProvider.parseRefreshToken(token);
+
+        // then
+        assertThat(payload.expiresAt()).isEqualTo(expiresAt);
+    }
+
+    @Test
+    @DisplayName("액세스 토큰을 리프레시 토큰으로 파싱하면 INVALID_TOKEN으로 거부한다")
+    void accessToken_cannotBeUsedAsRefreshToken() {
+        // given
+        String accessToken = tokenProvider.createAccessToken(1L, MemberRole.USER);
+
+        // when
+        BusinessException thrown = catchThrowableOfType(BusinessException.class,
+                () -> tokenProvider.parseRefreshToken(accessToken));
+
+        // then
+        assertThat(thrown.getErrorCode()).isEqualTo(AuthErrorCode.INVALID_TOKEN);
+    }
+
+    @Test
+    @DisplayName("패밀리(sid) 클레임이 없는 리프레시 토큰은 INVALID_TOKEN으로 거부한다")
+    void refreshTokenWithoutFamilyId_isRejected() {
+        // given — 이 변경 전에 발급된 형태의 토큰. 공개 API로는 못 만들어 jjwt로 직접 빌드한다
+        Instant now = Instant.now();
+        String tokenWithoutFamilyId = Jwts.builder()
+                .issuer(ISSUER)
+                .subject("1")
+                .claim("type", "refresh")
+                .issuedAt(Date.from(now))
+                .expiration(Date.from(now.plus(Duration.ofDays(14))))
+                .signWith(Keys.hmacShaKeyFor(Base64.getDecoder().decode(SERVER_SECRET)))
+                .compact();
+
+        // when
+        BusinessException thrown = catchThrowableOfType(BusinessException.class,
+                () -> tokenProvider.parseRefreshToken(tokenWithoutFamilyId));
+
+        // then
+        assertThat(thrown.getErrorCode()).isEqualTo(AuthErrorCode.INVALID_TOKEN);
+    }
+
+    private Instant refreshExpiry() {
+        return Instant.now().plus(Duration.ofDays(14));
     }
 }
