@@ -70,18 +70,48 @@ class RefreshTokenRepositoryTest {
     }
 
     @Test
-    @DisplayName("같은 패밀리에 새 토큰을 저장하면 이전 토큰은 더 이상 일치하지 않는다 (로테이션)")
-    void save_overwritesPreviousToken() {
+    @DisplayName("남아 있는 패밀리에 replace하면 true이고, 이전 토큰은 더 이상 일치하지 않는다 (로테이션)")
+    void replace_existingFamily() {
         // given
         String familyId = newFamilyId();
         refreshTokenRepository.save(familyId, TOKEN, inDays(14));
 
         // when
-        refreshTokenRepository.save(familyId, OTHER_TOKEN, inDays(14));
+        boolean replaced = refreshTokenRepository.replace(familyId, OTHER_TOKEN, inDays(14));
 
         // then
+        assertThat(replaced).isTrue();
         assertThat(refreshTokenRepository.matches(familyId, TOKEN)).isFalse();
         assertThat(refreshTokenRepository.matches(familyId, OTHER_TOKEN)).isTrue();
+    }
+
+    @Test
+    @DisplayName("없는(삭제된) 패밀리에 replace하면 false이고 키가 새로 생기지 않는다")
+    void replace_unknownFamily_doesNotCreateKey() {
+        // given
+        String familyId = newFamilyId();
+
+        // when
+        boolean replaced = refreshTokenRepository.replace(familyId, TOKEN, inDays(14));
+
+        // then
+        assertThat(replaced).isFalse();
+        assertThat(redisTemplate.hasKey("refresh:family:" + familyId)).isFalse();
+    }
+
+    @Test
+    @DisplayName("replace도 TTL을 만료 시각까지 남은 시간으로 설정한다 (SET은 TTL을 지우므로 함께 넘겨야 한다)")
+    void replace_setsTtlUntilExpiresAt() {
+        // given
+        String familyId = newFamilyId();
+        refreshTokenRepository.save(familyId, TOKEN, inDays(14));
+
+        // when
+        refreshTokenRepository.replace(familyId, OTHER_TOKEN, inDays(3));
+
+        // then
+        Long ttlSeconds = redisTemplate.getExpire("refresh:family:" + familyId, TimeUnit.SECONDS);
+        assertThat(ttlSeconds).isCloseTo(Duration.ofDays(3).toSeconds(), within(5L));
     }
 
     @Test

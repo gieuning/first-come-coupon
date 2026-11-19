@@ -140,7 +140,7 @@ class AuthServiceTest {
     }
 
     @Test
-    @DisplayName("최신 리프레시 토큰이면 같은 패밀리·같은 만료 시각으로 새 토큰 쌍을 발급하고 저장한다")
+    @DisplayName("최신 리프레시 토큰이면 같은 패밀리·같은 만료 시각으로 새 토큰 쌍을 발급하고, 패밀리의 토큰을 교체한다")
     void reissue_success() {
         // given
         Instant expiresAt = Instant.now().plus(Duration.ofDays(3));
@@ -149,6 +149,7 @@ class AuthServiceTest {
         given(memberRepository.findById(1L)).willReturn(Optional.of(memberWithId(1L)));
         given(jwtTokenProvider.createAccessToken(1L, MemberRole.USER)).willReturn("new-access");
         given(jwtTokenProvider.createRefreshToken(1L, FAMILY_ID, expiresAt)).willReturn("new-refresh");
+        given(refreshTokenRepository.replace(FAMILY_ID, "new-refresh", expiresAt)).willReturn(true);
 
         // when
         TokenPair result = authService.reissue("old-refresh");
@@ -157,7 +158,28 @@ class AuthServiceTest {
         assertThat(result.accessToken()).isEqualTo("new-access");
         assertThat(result.refreshToken()).isEqualTo("new-refresh");
         assertThat(result.refreshTokenExpiresAt()).isEqualTo(expiresAt);
-        then(refreshTokenRepository).should().save(FAMILY_ID, "new-refresh", expiresAt);
+        then(refreshTokenRepository).should(never()).save(any(), any(), any());
+    }
+
+    @Test
+    @DisplayName("비교 이후 패밀리가 삭제됐으면(로그아웃·재사용 감지) INVALID_REFRESH_TOKEN, 토큰을 돌려주지 않는다")
+    void reissue_familyDeletedAfterMatch_throwsInvalidRefreshToken() {
+        // given
+        Instant expiresAt = Instant.now().plus(Duration.ofDays(3));
+        given(jwtTokenProvider.parseRefreshToken("old-refresh")).willReturn(new RefreshTokenPayload(1L, FAMILY_ID, expiresAt));
+        given(refreshTokenRepository.matches(FAMILY_ID, "old-refresh")).willReturn(true);
+        given(memberRepository.findById(1L)).willReturn(Optional.of(memberWithId(1L)));
+        given(jwtTokenProvider.createAccessToken(1L, MemberRole.USER)).willReturn("new-access");
+        given(jwtTokenProvider.createRefreshToken(1L, FAMILY_ID, expiresAt)).willReturn("new-refresh");
+        given(refreshTokenRepository.replace(FAMILY_ID, "new-refresh", expiresAt)).willReturn(false);
+
+        // when
+        BusinessException thrown = catchThrowableOfType(BusinessException.class, () -> authService.reissue("old-refresh"));
+
+        // then
+        assertThat(thrown).isNotNull();
+        assertThat(thrown.getErrorCode()).isEqualTo(AuthErrorCode.INVALID_REFRESH_TOKEN);
+        then(refreshTokenRepository).should(never()).save(any(), any(), any());
     }
 
     @Test
@@ -174,7 +196,7 @@ class AuthServiceTest {
         // then
         assertThat(thrown.getErrorCode()).isEqualTo(AuthErrorCode.INVALID_REFRESH_TOKEN);
         then(refreshTokenRepository).should().delete(FAMILY_ID);
-        then(refreshTokenRepository).should(never()).save(any(), any(), any());
+        then(refreshTokenRepository).should(never()).replace(any(), any(), any());
         then(jwtTokenProvider).should(never()).createAccessToken(any(), any());
     }
 

@@ -20,8 +20,12 @@ public class RefreshTokenRepository {
     private final StringRedisTemplate redisTemplate;
 
     public void save(String familyId, String refreshToken, Instant expiresAt) {
-        Duration ttl = Duration.between(Instant.now(), expiresAt);
-        redisTemplate.opsForValue().set(key(familyId), hash(refreshToken), ttl);
+        redisTemplate.opsForValue().set(key(familyId), hash(refreshToken), ttlUntil(expiresAt));
+    }
+
+    public boolean replace(String familyId, String refreshToken, Instant expiresAt) {
+        return Boolean.TRUE.equals(
+                redisTemplate.opsForValue().setIfPresent(key(familyId), hash(refreshToken), ttlUntil(expiresAt)));
     }
 
     public boolean matches(String familyId, String refreshToken) {
@@ -31,6 +35,10 @@ public class RefreshTokenRepository {
 
     public boolean delete(String familyId) {
         return Boolean.TRUE.equals(redisTemplate.delete(key(familyId)));
+    }
+
+    private Duration ttlUntil(Instant expiresAt) {
+        return Duration.between(Instant.now(), expiresAt);
     }
 
     private String key(String familyId) {

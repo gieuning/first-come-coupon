@@ -59,7 +59,9 @@ public class AuthService {
         String familyId = UUID.randomUUID().toString();
         Instant expiresAt = Instant.now().plus(jwtProperties.refreshTokenTtl());
 
-        return issueTokens(member, familyId, expiresAt);
+        TokenPair tokens = createTokens(member, familyId, expiresAt);
+        refreshTokenRepository.save(familyId, tokens.refreshToken(), expiresAt);
+        return tokens;
     }
 
     public TokenPair reissue(String refreshToken) {
@@ -77,7 +79,12 @@ public class AuthService {
                                         .orElseThrow(() -> new BusinessException(AuthErrorCode.INVALID_REFRESH_TOKEN));
 
         // 권한이 바뀌었을 수 있어 role은 토큰이 아니라 DB에서 다시 읽는다
-        return issueTokens(member, payload.familyId(), payload.expiresAt());
+        TokenPair tokens = createTokens(member, payload.familyId(), payload.expiresAt());
+
+        if (!refreshTokenRepository.replace(payload.familyId(), tokens.refreshToken(), payload.expiresAt())) {
+            throw new BusinessException(AuthErrorCode.INVALID_REFRESH_TOKEN);
+        }
+        return tokens;
     }
 
     // 토큰이 없거나 무효여도 예외 없이 끝낸다 (멱등) — 로그아웃의 목적은 "이 기기를 끊는 것"이고 이미 끊긴 상태도 성공이다
@@ -93,10 +100,9 @@ public class AuthService {
         }
     }
 
-    private TokenPair issueTokens(Member member, String familyId, Instant expiresAt) {
+    private TokenPair createTokens(Member member, String familyId, Instant expiresAt) {
         String accessToken = jwtTokenProvider.createAccessToken(member.getId(), member.getRole());
         String refreshToken = jwtTokenProvider.createRefreshToken(member.getId(), familyId, expiresAt);
-        refreshTokenRepository.save(familyId, refreshToken, expiresAt);
 
         return new TokenPair(accessToken, refreshToken, expiresAt);
     }
