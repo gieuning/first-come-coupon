@@ -72,7 +72,7 @@ public class JwtTokenProvider {
     public RefreshTokenPayload parseRefreshToken(String token) {
         return parse(token, REFRESH_TYPE, claims -> {
             String familyId = claims.get(FAMILY_ID_CLAIM, String.class);
-            // sid가 없으면 Redis에서 대조할 패밀리가 없다 (이 변경 전 발급분이거나 위조)
+            // sid가 없으면 Redis에서 대조할 패밀리가 없다 (서명 검증 뒤라 sid 도입 전 발급분만 해당)
             if (familyId == null) {
                 throw new BusinessException(AuthErrorCode.INVALID_TOKEN);
             }
