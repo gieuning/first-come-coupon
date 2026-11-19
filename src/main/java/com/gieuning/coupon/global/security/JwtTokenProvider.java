@@ -32,7 +32,6 @@ public class JwtTokenProvider {
     private final JwtParser jwtParser;
     private final String issuer;
     private final Duration accessTokenTtl;
-    private final Duration refreshTokenTtl;
 
     public JwtTokenProvider(JwtProperties properties) {
         this.signingKey = Keys.hmacShaKeyFor(Base64.getDecoder().decode(properties.secret()));
@@ -43,7 +42,6 @@ public class JwtTokenProvider {
                              .build();
         this.issuer = properties.issuer();
         this.accessTokenTtl = properties.accessTokenTtl();
-        this.refreshTokenTtl = properties.refreshTokenTtl();
     }
 
     public String createAccessToken(Long memberId, MemberRole role) {
@@ -54,12 +52,7 @@ public class JwtTokenProvider {
     }
 
     // 리프레시 토큰에는 role을 담지 않는다 — 재발급 외의 용도가 없고, 권한 정보는 짧게 사는 액세스 토큰의 몫
-    // 로그인 시 새 패밀리의 첫 토큰: 패밀리 수명은 지금부터 refreshTokenTtl
-    public String createRefreshToken(Long memberId, String familyId) {
-        return createRefreshToken(memberId, familyId, Instant.now().plus(refreshTokenTtl));
-    }
-
-    // 재발급 시에는 이전 토큰의 만료 시각을 넘긴다 — 로테이션해도 패밀리 수명이 늘지 않게 (절대 만료)
+    // 만료 시각은 패밀리 수명이라 호출자가 정한다 (로그인: 지금 + TTL, 재발급: 이전 토큰의 만료 시각 그대로)
     public String createRefreshToken(Long memberId, String familyId, Instant expiresAt) {
         return baseBuilder(memberId, REFRESH_TYPE, expiresAt)
                 // jti: 같은 초에 발급돼도 토큰 문자열이 겹치지 않게 (겹치면 재사용 감지가 오판)

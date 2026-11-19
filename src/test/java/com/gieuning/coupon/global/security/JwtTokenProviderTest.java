@@ -55,7 +55,7 @@ class JwtTokenProviderTest {
     @DisplayName("리프레시 토큰을 액세스 토큰으로 파싱하면 INVALID_TOKEN으로 거부한다")
     void refreshToken_cannotBeUsedAsAccessToken() {
         // given
-        String refreshToken = tokenProvider.createRefreshToken(1L, FAMILY_ID);
+        String refreshToken = tokenProvider.createRefreshToken(1L, FAMILY_ID, refreshExpiry());
 
         // when
         BusinessException thrown = catchThrowableOfType(BusinessException.class,
@@ -118,30 +118,30 @@ class JwtTokenProviderTest {
     }
 
     @Test
-    @DisplayName("발급한 리프레시 토큰을 파싱하면 memberId·familyId가 그대로 나오고, 만료는 지금부터 14일 뒤다")
+    @DisplayName("발급한 리프레시 토큰을 파싱하면 memberId·familyId가 그대로 나온다")
     void refreshToken_roundTrip() {
         // given
         Long memberId = 1L;
 
         // when
-        String token = tokenProvider.createRefreshToken(memberId, FAMILY_ID);
+        String token = tokenProvider.createRefreshToken(memberId, FAMILY_ID, refreshExpiry());
         RefreshTokenPayload payload = tokenProvider.parseRefreshToken(token);
 
         // then
         assertThat(payload.memberId()).isEqualTo(memberId);
         assertThat(payload.familyId()).isEqualTo(FAMILY_ID);
-        assertThat(payload.expiresAt()).isCloseTo(Instant.now().plus(Duration.ofDays(14)), within(5, ChronoUnit.SECONDS));
     }
 
     @Test
     @DisplayName("같은 회원·패밀리로 연달아 발급해도 리프레시 토큰 문자열은 매번 다르다")
     void refreshToken_isUniqueEvenWithinSameSecond() {
-        // given — iat·exp는 초 단위라, 같은 초에 발급되면 jti 없이는 같은 문자열이 나온다
+        // given — iat는 초 단위이고 재발급은 만료 시각을 이어받으므로, jti 없이는 같은 문자열이 나온다
         Long memberId = 1L;
+        Instant expiresAt = refreshExpiry();
 
         // when
-        String first = tokenProvider.createRefreshToken(memberId, FAMILY_ID);
-        String second = tokenProvider.createRefreshToken(memberId, FAMILY_ID);
+        String first = tokenProvider.createRefreshToken(memberId, FAMILY_ID, expiresAt);
+        String second = tokenProvider.createRefreshToken(memberId, FAMILY_ID, expiresAt);
 
         // then
         assertThat(first).isNotEqualTo(second);
@@ -195,5 +195,9 @@ class JwtTokenProviderTest {
 
         // then
         assertThat(thrown.getErrorCode()).isEqualTo(AuthErrorCode.INVALID_TOKEN);
+    }
+
+    private Instant refreshExpiry() {
+        return Instant.now().plus(Duration.ofDays(14));
     }
 }
