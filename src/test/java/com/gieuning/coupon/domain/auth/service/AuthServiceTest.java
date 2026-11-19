@@ -183,6 +183,26 @@ class AuthServiceTest {
     }
 
     @Test
+    @DisplayName("토큰은 유효하지만 회원이 없으면 INVALID_REFRESH_TOKEN, 새 토큰은 발급하지 않는다")
+    void reissue_memberNotFound_throwsInvalidRefreshToken() {
+        // given
+        given(jwtTokenProvider.parseRefreshToken("old-refresh"))
+                .willReturn(new RefreshTokenPayload(1L, FAMILY_ID, Instant.now().plus(Duration.ofDays(3))));
+        given(refreshTokenRepository.matches(FAMILY_ID, "old-refresh")).willReturn(true);
+        given(memberRepository.findById(1L)).willReturn(Optional.empty());
+
+        // when
+        BusinessException thrown = catchThrowableOfType(BusinessException.class, () -> authService.reissue("old-refresh"));
+
+        // then
+        assertThat(thrown).isNotNull();
+        assertThat(thrown.getErrorCode()).isEqualTo(AuthErrorCode.INVALID_REFRESH_TOKEN);
+        then(refreshTokenRepository).should(never()).save(any(), any(), any());
+        then(refreshTokenRepository).should(never()).replace(any(), any(), any());
+        then(jwtTokenProvider).should(never()).createAccessToken(any(), any());
+    }
+
+    @Test
     @DisplayName("이미 쓴 리프레시 토큰이면 패밀리를 삭제하고 INVALID_REFRESH_TOKEN, 새 토큰은 발급하지 않는다")
     void reissue_reusedToken_revokesFamily() {
         // given
