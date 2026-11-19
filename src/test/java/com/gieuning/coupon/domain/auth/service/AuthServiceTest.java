@@ -27,7 +27,7 @@ import java.time.temporal.ChronoUnit;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.catchThrowable;
+import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.catchThrowableOfType;
 import static org.assertj.core.api.Assertions.within;
 import static org.mockito.ArgumentMatchers.any;
@@ -268,13 +268,9 @@ class AuthServiceTest {
         // given
         given(jwtTokenProvider.parseRefreshToken("forged-refresh")).willThrow(new BusinessException(AuthErrorCode.INVALID_TOKEN));
 
-        // when
-        Throwable forged = catchThrowable(() -> authService.logout("forged-refresh"));
-        Throwable missing = catchThrowable(() -> authService.logout(null));
-
-        // then
-        assertThat(forged).isNull();
-        assertThat(missing).isNull();
+        // when & then
+        assertThatCode(() -> authService.logout("forged-refresh")).doesNotThrowAnyException();
+        assertThatCode(() -> authService.logout(null)).doesNotThrowAnyException();
         then(refreshTokenRepository).shouldHaveNoInteractions();
     }
 
