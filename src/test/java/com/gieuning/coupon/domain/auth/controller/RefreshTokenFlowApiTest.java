@@ -57,7 +57,6 @@ class RefreshTokenFlowApiTest {
                 .expectCookie().secure(REFRESH_COOKIE, true)
                 .expectCookie().sameSite(REFRESH_COOKIE, "Strict")
                 .expectCookie().path(REFRESH_COOKIE, "/api/auth")
-                // 쿠키 수명은 남은 패밀리 수명 — 재발급으로 14일을 넘기지 않는다
                 .expectCookie().maxAge(REFRESH_COOKIE, maxAge ->
                         assertThat(maxAge).isPositive().isLessThanOrEqualTo(Duration.ofDays(14).toSeconds()));
 
