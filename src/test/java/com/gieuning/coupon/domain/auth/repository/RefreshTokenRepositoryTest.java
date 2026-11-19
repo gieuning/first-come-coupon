@@ -115,6 +115,21 @@ class RefreshTokenRepositoryTest {
     }
 
     @Test
+    @DisplayName("만료 시각이 이미 지났으면 replace는 false이고 저장된 토큰은 바뀌지 않는다")
+    void replace_expiredFamily_returnsFalse() {
+        // given
+        String familyId = newFamilyId();
+        refreshTokenRepository.save(familyId, TOKEN, inDays(14));
+
+        // when
+        boolean replaced = refreshTokenRepository.replace(familyId, OTHER_TOKEN, Instant.now().minusSeconds(1));
+
+        // then
+        assertThat(replaced).isFalse();
+        assertThat(refreshTokenRepository.matches(familyId, TOKEN)).isTrue();
+    }
+
+    @Test
     @DisplayName("패밀리를 삭제하면 true를 반환하고, 이후 그 패밀리의 토큰은 일치하지 않는다")
     void delete_family() {
         // given

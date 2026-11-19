@@ -24,8 +24,12 @@ public class RefreshTokenRepository {
     }
 
     public boolean replace(String familyId, String refreshToken, Instant expiresAt) {
+        Duration ttl = ttlUntil(expiresAt);
+        if (!ttl.isPositive()) {
+            return false;
+        }
         return Boolean.TRUE.equals(
-                redisTemplate.opsForValue().setIfPresent(key(familyId), hash(refreshToken), ttlUntil(expiresAt)));
+                redisTemplate.opsForValue().setIfPresent(key(familyId), hash(refreshToken), ttl));
     }
 
     public boolean matches(String familyId, String refreshToken) {
